@@ -1,0 +1,229 @@
+---
+title: "Mastering Shiny Notes"
+description: |
+  Chapter 2: Basic UI
+author:
+  - name: Alexis Solis Cancino
+    url: mailto:alexis.solisc@gmail.com
+    # affiliation: ITAM
+date: "2021-03-28"
+output: 
+  distill::distill_article:
+    toc: true
+    toc_float: true
+    code_folding: true
+    theme: "resources/theme.css"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = T,
+  warning = F,
+  eval = F)
+
+library(shiny)
+```
+
+## 2.1 Introduction
+
+However, there is a rich and vibrant community of extension packages, like shinyWidgets, colorpicker, and sorttable. You can find a comprehensive, actively-maintained list of other packages at https://github.com/nanxstats/awesome-shiny-extensions, maintained by Nan Xiao.
+
+## 2.2 Inputs
+
+You use functions like `sliderInput()`, `selectInput()`, `textInput()`, and `numericInput()` to insert input controls into your UI specification.
+
+### 2.2.1 Common structure
+
+All input functions have the same first argument: inputId. This is the identifier used to connect the front end with the back end: if your UI has an input with ID "name", the server function will access it with input$name.
+
+The inputId has two constraints:
+
+It must be a simple string that contains only letters, numbers, and underscores (no spaces, dashes, periods, or other special characters allowed!). Name it like you would name a variable in R.
+
+It must be unique. If it’s not unique, you’ll have no way to refer to this control in your server function!
+
+
+Most input functions have a second parameter called `label`. This is used to create a human-readable label for the control.
+
+
+The third parameter is typically value, which, where possible, lets you set the default value. The remaining parameters are unique to the control.
+
+When creating an input, I recommend supplying the inputId and label arguments by position, and all other arguments by name:
+
+
+```{r}
+sliderInput("min", "Limit (minimum)", value = 50, min = 0, max = 100)
+```
+
+
+### 2.2.2 Free text
+
+Collect small amounts of text with `textInput()`, passwords with `passwordInput()`, and paragraphs of text with `textAreaInput()`.
+
+```{r}
+ui <- fluidPage(
+  textInput("name", "What's your name?"),
+  passwordInput("password", "What's your password?"),
+  textAreaInput("story", "Tell me about yourself", rows = 3)
+)
+```
+
+If you want to ensure that the text has certain properties you can use `validate()`, which we’ll come back to in Chapter 8.
+
+### 2.2.3 Numeric inputs
+
+To collect numeric values, create a constrained text box with numericInput() or a slider with sliderInput(). If you supply a length-2 numeric vector for the default value of sliderInput(), you get a “range” slider with two ends.
+
+```{r}
+ui <- fluidPage(
+  numericInput("num", "Number one", value = 0, min = 0, max = 100),
+  sliderInput("num2", "Number two", value = 50, min = 0, max = 100),
+  
+  # Watch the "range" slider
+  sliderInput("rng", "Range", value = c(10, 20), min = 0, max = 100)
+)
+```
+
+Hadley recommends only using sliders for small ranges, or cases where the precise value is not so important. Attempting to precisely select a number on a small slider is an exercise in frustration! To customize your slider, please refer to: https://shiny.rstudio.com/articles/sliders.html
+
+### 2.2.4 Dates
+
+Collect a single day with `dateInput()` or a range of two days with `dateRangeInput()`. These provide a convenient calendar picker, and additional arguments like `datesdisabled` and `daysofweekdisabled` allow you to restrict the set of valid inputs.
+
+```{r}
+ui <- fluidPage(
+  dateInput("dob", "When were you born?", ),
+  dateRangeInput("holiday", "When do you want to go on vacation next?")
+)
+```
+
+Date format, language, and the day on which the week starts defaults to US standards. If you are creating an app with an international audience, set `format`, `language`, and `weekstart` so that the dates are natural to your users.
+
+### 2.2.5 Limited choices
+
+There are two different approaches to allow the user to choose from a prespecified set of options: `selectInput()` and `radioButtons()`.
+
+```{r}
+animals <- c("dog", "cat", "mouse", "bird", "other", "I hate animals")
+
+ui <- fluidPage(
+  selectInput("state", "What's your favourite state?", state.name),
+  radioButtons("animal", "What's your favourite animal?", animals)
+)
+```
+
+Radio buttons have two nice features: they show all possible options, making them suitable for short lists, and via the `choiceNames`/`choiceValues` arguments, they can display options other than plain text. `choiceNames` determines what is shown to the user; `choiceValues` determines what is returned in your server function.
+
+```{r}
+ui <- fluidPage(
+  radioButtons("rb", "Choose one:",
+    choiceNames = list(
+      icon("angry"),
+      icon("smile"),
+      icon("sad-tear")
+    ),
+    choiceValues = list("angry", "happy", "sad")
+  )
+)
+```
+
+
+Dropdowns created with `selectInput()` take up the same amount of space, regardless of the number of options, making them more suitable for longer options. You can also set `multiple = TRUE` to allow the user to select multiple elements.
+
+```{r}
+ui <- fluidPage(
+  selectInput(
+    "state", "What's your favourite state?", state.name,
+    multiple = TRUE
+  )
+)
+```
+
+If you have a very large set of possible options, you may want to use “server-side” `selectInput()` so that the complete set of possible options are not embedded in the UI (which can make it slow to load), but instead sent as needed by the server. You can learn more about this advanced topic at https://shiny.rstudio.com/articles/selectize.html#server-side-selectize.
+
+
+There’s no way to select multiple values with radio buttons, but there’s an alternative that’s conceptually similar: `checkboxGroupInput()`.
+
+```{r}
+ui <- fluidPage(
+  checkboxGroupInput("animal", "What animals do you like?", animals)
+)
+```
+
+If you want a single checkbox for a single yes/no question, use `checkboxInput()`:
+
+```{r}
+ui <- fluidPage(
+  checkboxInput("cleanup", "Clean up?", value = TRUE),
+  checkboxInput("shutdown", "Shutdown?")
+)
+```
+
+### 2.2.6 File uploads
+
+Allow the user to upload a file with `fileInput()`:
+
+```{r}
+ui <- fluidPage(
+  fileInput("upload", NULL)
+)
+```
+
+`fileInput()` requires special handling on the server side, and is discussed in detail in Chapter 9.
+
+### 2.2.7 Action buttons
+
+Let the user perform an action with `actionButton()` or `actionLink()`:
+
+```{r}
+ui <- fluidPage(
+  actionButton("click", "Click me!"),
+  actionButton("drink", "Drink me!", icon = icon("cocktail"))
+)
+```
+
+Actions links and buttons are most naturally paired with observeEvent() or eventReactive() in your server function. You haven’t learned about these important functions yet, but we’ll come back to them in Section 3.5.
+
+You can customise the appearance using the class argument by using one of "btn-primary", "btn-success", "btn-info", "btn-warning", or "btn-danger". You can also change the size with "btn-lg", "btn-sm", "btn-xs". Finally, you can make buttons span the entire width of the element they are embedded within using "btn-block".
+
+```{r}
+ui <- fluidPage(
+  fluidRow(
+    actionButton("click", "Click me!", class = "btn-danger"),
+    actionButton("drink", "Drink me!", class = "btn-lg btn-success")
+  ),
+  fluidRow(
+    actionButton("eat", "Eat me!", class = "btn-block")
+  )
+)
+```
+
+The class argument works by setting the class attribute of the underlying HTML, which affects how the element is styled. To see other options, you can read the documentation for Bootstrap, the CSS design system used by Shiny: 
+
+<http://bootstrapdocs.com/v3.3.6/docs/css/#buttons>.
+
+
+### 2.2.8 Exercises
+
+
+## 2.3 Outputs
+
+
+### 2.3.1 Text
+
+### 2.3.2 Tables
+
+### 2.3.3 Plots
+
+### 2.3.4 Downloads
+
+
+### 2.3.5 Exercises
+
+
+## 2.4 Summary
+
+This chapter was all about the front end for Shiny apps. This is a great reference for when you need a specific component.
